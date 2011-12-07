@@ -16,4 +16,3 @@ class App(object):
 
 
 application = App()
-

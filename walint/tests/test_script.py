@@ -33,9 +33,7 @@ def customctrl2(method, path, app, caller):
     return False
 
 
-
 class TestWalint(unittest.TestCase):
 
     def test_script(self):
         main(_CFG)
-

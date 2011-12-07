@@ -1,6 +1,5 @@
 import sys
 from ConfigParser import ConfigParser, NoOptionError
-import string
 
 from webob.exc import HTTPException
 from webob.dec import wsgify
@@ -68,9 +67,10 @@ def _default_stream(msg, path=None, method=None, success=True):
         path = ''
 
     if success:
-        print(OK + '[OK] '+ ENDC + path + msg)
+        print(OK + '[OK] ' + ENDC + path + msg)
     else:
-        print(FAIL + '[KO] '+ ENDC + path + msg)
+        print(FAIL + '[KO] ' + ENDC + path + msg)
+
 
 def run(app, singles, controllers, services, stream_result=None):
     # what about global setup.teardown ?
@@ -78,7 +78,6 @@ def run(app, singles, controllers, services, stream_result=None):
     results = []
     if stream_result is None:
         stream_result = _default_stream
-
 
     for name, single in singles:
         msg = single.__doc__
@@ -199,4 +198,3 @@ def main(file):
 if __name__ == '__main__':
     results = main(sys.argv[1])
     sys.exit(len(results) != 0)
-
