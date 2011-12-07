@@ -67,7 +67,8 @@ def run(app, controllers, services, stream_result=None):
                 if setup is not None:
                     setup(app)
                 try:
-                    success = controller(app, path, method)
+                    caller = getattr(app, method.lower())
+                    success = controller(method, path, app, caller)
                     stream_result(msg, path, method, success)
                     results.append((success, msg))
                 finally:
@@ -99,6 +100,10 @@ def _resolve_ctrl(fqn):
     return fqn, _resolve_name(fqn)
 
 
+# TRACE and CONNECT not supported
+_METHS = ('GET', 'PUT', 'HEAD', 'DELETE', 'POST',
+          'OPTIONS')
+
 def get_services(config):
     svcs = config.get('walint', 'services')
     svcs = [svc for svc in
@@ -114,8 +119,7 @@ def get_services(config):
                     config.get(svc, 'methods').split('|')
                    if meth.strip() != '']
         if methods == ['*']:
-            methods = ['GET', 'PUT', 'HEAD', 'DELETE', 'POST',
-                       'OPTIONS', 'TRACE', 'CONNECT']
+            methods = _METHS
         try:
             setup = _resolve_name(config.get(svc, 'setup'))
         except NoOptionError:

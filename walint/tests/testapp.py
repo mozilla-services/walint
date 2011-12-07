@@ -1,4 +1,13 @@
-from wsgiref.simple_server import make_server, demo_app
+from webob.dec import wsgify
+from wsgiref.simple_server import make_server
 
-application = make_server('', 8000, demo_app)
+
+class App(object):
+
+    @wsgify
+    def __call__(self, request):
+        return 'ok'
+
+
+application = App()
 

@@ -22,12 +22,13 @@ def cleanup_stuff(app):
     pass
 
 
-def customctrl(app, path, method):
+def customctrl(method, path, app, caller):
     """Make sure the app does this or that"""
-    return True
+    res = caller(path)
+    return res.status_int == 200
 
 
-def customctrl2(app, path, method):
+def customctrl2(method, path, app, caller):
     """Make sure the app does tea"""
     return False
 
