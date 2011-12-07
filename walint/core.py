@@ -1,9 +1,25 @@
 import sys
 from ConfigParser import ConfigParser, NoOptionError
-import random
 import string
 
+from webob.exc import HTTPException
+from webob.dec import wsgify
 from webtest import TestApp
+from walint.util import METHS, random_path
+
+
+class _CatchErrors(object):
+    def __init__(self, app):
+        self.app = app
+        if hasattr(app, 'registry'):
+            self.registry = app.registry
+
+    @wsgify
+    def __call__(self, request):
+        try:
+            return request.get_response(self.app)
+        except HTTPException, e:
+            return e
 
 
 def _resolve_name(name):
@@ -45,17 +61,32 @@ BLUE = '\033[94m'
 ENDC = '\033[0m'
 
 
-def _default_stream(msg, path, method, success=True):
-    path = BLUE + '%s %s' % (method, path) + ENDC
-    if success:
-        print(OK + '[OK] '+ ENDC + path + ' ' + msg)
+def _default_stream(msg, path=None, method=None, success=True):
+    if path is not None:
+        path = BLUE + '%s %s ' % (method, path) + ENDC
     else:
-        print(FAIL + '[KO] '+ ENDC + path + ' ' + msg)
+        path = ''
 
-def run(app, controllers, services, stream_result=None):
+    if success:
+        print(OK + '[OK] '+ ENDC + path + msg)
+    else:
+        print(FAIL + '[KO] '+ ENDC + path + msg)
+
+def run(app, singles, controllers, services, stream_result=None):
+    # what about global setup.teardown ?
+    #
     results = []
     if stream_result is None:
         stream_result = _default_stream
+
+
+    for name, single in singles:
+        msg = single.__doc__
+        if msg is None:
+            msg = name
+        success = single(app)
+        stream_result(msg, None, None, success)
+        results.append((success, msg))
 
     for name, controller in controllers:
         msg = controller.__doc__
@@ -88,21 +119,19 @@ def build_app(config):
     app = config.get('walint', 'root')
     if app.startswith('http'):
         raise NotImplementedError()
-    return TestApp(_resolve_name(app))
-
-
-def _random_path(size=10):
-    return '/' + ''.join([random.choice(string.ascii_letters)
-                          for l in range(size)])
+    return TestApp(_CatchErrors(_resolve_name(app)))
 
 
 def _resolve_ctrl(fqn):
     return fqn, _resolve_name(fqn)
 
 
-# TRACE and CONNECT not supported
-_METHS = ('GET', 'PUT', 'HEAD', 'DELETE', 'POST',
-          'OPTIONS')
+def get_singles(config):
+    svcs = config.get('walint', 'singles')
+    return [(svc, _resolve_name(svc)) for svc in
+                [svc.strip() for svc in svcs.split('\n')]
+             if svc != '']
+
 
 def get_services(config):
     svcs = config.get('walint', 'services')
@@ -114,12 +143,12 @@ def get_services(config):
     for svc in svcs:
         path = config.get(svc, 'path')
         if path == '?':
-            path = _random_path()
+            path = random_path()
         methods = [meth.strip() for meth in
                     config.get(svc, 'methods').split('|')
                    if meth.strip() != '']
         if methods == ['*']:
-            methods = _METHS
+            methods = METHS
         try:
             setup = _resolve_name(config.get(svc, 'setup'))
         except NoOptionError:
@@ -158,8 +187,11 @@ def main(file):
     # getting the list of services to test
     services = get_services(config)
 
+    # getting singles
+    singles = get_singles(config)
+
     # now running the tests
-    results = run(app, controllers, services, stream)
+    results = run(app, singles, controllers, services, stream)
 
     return results
 
