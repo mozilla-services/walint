@@ -108,9 +108,9 @@ def run(app, singles, controllers, services, stream_result=None):
     return results
 
 
-def load_config(file):
+def load_config(filename):
     config = ConfigParser()
-    config.read(file)
+    config.read(filename)
     return config
 
 
@@ -168,9 +168,9 @@ def get_controllers(config):
              if ctrl != '']
 
 
-def main(file):
+def main(filename):
     # load the config
-    config = load_config(file)
+    config = load_config(filename)
 
     try:
         stream = config.get('walint', 'stream')
@@ -196,5 +196,12 @@ def main(file):
 
 
 if __name__ == '__main__':
-    results = main(sys.argv[1])
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(dest="filename", help="configuration filename")
+
+    args = parser.parse_args()
+
+    results = main(args.filename)
+
     sys.exit(len(results) != 0)
