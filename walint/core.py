@@ -1,5 +1,6 @@
 import sys
 from ConfigParser import ConfigParser, NoOptionError
+from collections import namedtuple
 
 from webob.exc import HTTPException
 from webob.dec import wsgify
@@ -19,6 +20,9 @@ class _CatchErrors(object):
             return request.get_response(self.app)
         except HTTPException, e:
             return e
+
+Service = namedtuple('Service',
+                     ('name', 'path', 'methods', 'setup', 'teardown'))
 
 
 def _resolve_name(name):
@@ -80,7 +84,7 @@ def _get_function_desc(func, name):
     return msg
 
 
-def run(app, singles, controllers, services, stream_result=None):
+def run(app, singles, controllers, services, config, stream_result=None):
     # what about global setup.teardown ?
     #
     results = []
@@ -88,7 +92,7 @@ def run(app, singles, controllers, services, stream_result=None):
         stream_result = _default_stream
 
     for name, single in singles:
-        success = single(app)
+        success = single(app, config)
         msg = _get_function_desc(single, name)
         stream_result(msg, None, None, success)
         results.append((success, msg))
@@ -96,19 +100,22 @@ def run(app, singles, controllers, services, stream_result=None):
     for name, controller in controllers:
         msg = _get_function_desc(single, name)
 
-        for path, methods, setup, teardown in services:
+        for service in services:
             accepted_methods = getattr(controller, '_accepted_methods', METHS)
-            for method in set(methods) & set(accepted_methods):
-                if setup is not None:
-                    setup(app)
+            for method in set(service.methods) & set(accepted_methods):
+                if service.setup is not None:
+                    service.setup(app, config)
                 try:
                     caller = getattr(app, method.lower())
-                    success = controller(method, path, app, caller)
-                    stream_result(msg, path, method, success)
+                    # if there is an entry for this service, then pass the
+                    # appropriate configuration objects
+
+                    success = controller(method, service, app, caller)
+                    stream_result(msg, service.path, method, success)
                     results.append((success, msg))
                 finally:
-                    if teardown is not None:
-                        teardown(app)
+                    if service.teardown is not None:
+                        service.teardown(app, config)
 
     return results
 
@@ -162,7 +169,7 @@ def get_services(config):
         except NoOptionError:
             teardown = None
 
-        res.append((path, methods, setup, teardown))
+        res.append(Service(svc, path, methods, setup, teardown))
     return res
 
 
@@ -195,7 +202,7 @@ def main(filename):
     singles = get_singles(config)
 
     # now running the tests
-    results = run(app, singles, controllers, services, stream)
+    results = run(app, singles, controllers, services, config, stream)
 
     return results
 
