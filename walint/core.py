@@ -72,6 +72,14 @@ def _default_stream(msg, path=None, method=None, success=True):
         print(FAIL + '[KO] ' + ENDC + path + msg)
 
 
+def _get_function_desc(func, name):
+    """returns the docstring of the function, the name otherwise"""
+    msg = func.__doc__
+    if msg is None:
+        msg = name
+    return msg
+
+
 def run(app, singles, controllers, services, stream_result=None):
     # what about global setup.teardown ?
     #
@@ -80,17 +88,13 @@ def run(app, singles, controllers, services, stream_result=None):
         stream_result = _default_stream
 
     for name, single in singles:
-        msg = single.__doc__
-        if msg is None:
-            msg = name
         success = single(app)
+        msg = _get_function_desc(single, name)
         stream_result(msg, None, None, success)
         results.append((success, msg))
 
     for name, controller in controllers:
-        msg = controller.__doc__
-        if msg is None:
-            msg = name
+        msg = _get_function_desc(single, name)
 
         for path, methods, setup, teardown in services:
             for method in methods:
@@ -195,7 +199,7 @@ def main(filename):
     return results
 
 
-if __name__ == '__main__':
+def run_cli():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(dest="filename", help="configuration filename")
@@ -205,3 +209,7 @@ if __name__ == '__main__':
     results = main(args.filename)
 
     sys.exit(len(results) != 0)
+
+
+if __name__ == '__main__':
+    run_cli()
