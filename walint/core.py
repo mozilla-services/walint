@@ -97,7 +97,8 @@ def run(app, singles, controllers, services, stream_result=None):
         msg = _get_function_desc(single, name)
 
         for path, methods, setup, teardown in services:
-            for method in methods:
+            accepted_methods = getattr(controller, '_accepted_methods', METHS)
+            for method in set(methods) & set(accepted_methods):
                 if setup is not None:
                     setup(app)
                 try:
