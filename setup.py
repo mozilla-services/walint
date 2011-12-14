@@ -15,7 +15,7 @@ requires = ['webtest', 'webob']
 
 setup(name='walint',
       version='0.1',
-      description='Script to test a web application HTTP complicancy',
+      description='Script to test a web application HTTP compliancy',
       long_description=README + '\n\n' + CHANGES,
       classifiers=[
         "Programming Language :: Python",
@@ -31,4 +31,5 @@ setup(name='walint',
       zip_safe=False,
       install_requires=requires,
       tests_require=requires,
-      test_suite="cornice")
+      entry_points={'console_scripts': ['walint = walint.core:run_cli',]},
+      test_suite="walint")
