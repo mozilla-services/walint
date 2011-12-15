@@ -37,6 +37,7 @@ class WalintTestCase(SetupTearDownMixin):
 
     @classmethod
     def from_config(cls, config, section):
+
         _, name = section.split(':', 1)
 
         testcase = cls(name)
@@ -50,17 +51,50 @@ class WalintTestCase(SetupTearDownMixin):
         for service in services:
             if service:
                 name, methods = service.split()
-                testcase.services.append((name, methods.split('|')))
-                # XXX handle wildcards
 
+                if name == "*" or name.startswith("~"):
+                    # we want to test all the services
+                    names = config.get_services().keys()
+                    if name.startswith("~"):
+                        # filter the listed ones
+                        exclude = [n.strip().strip("~")
+                                   for n in name.split("|")]
+
+                        names = set(names) - set(exclude)
+                else:
+                    names = map(str.strip, name.split("|"))
+
+                if methods.startswith("~"):
+                    exclude = [m.strip().strip("~")
+                               for m in methods.split("|")]
+                    methods = set(METHS) - set(exclude)
+
+                elif methods == "*":
+                    methods = METHS
+                else:
+                    methods = [m.strip()for m in methods.split("|")]
+
+                for name in names:
+                    testcase.services.append((name, methods))
+
+        # and the list of controllers
         controllers = config.get(section, "controllers") or ""
-        controllers = controllers.split("\n")
+        controllers = map(str.strip, controllers.split("\n"))
 
         for controller in controllers:
             if controller:
-                temp = controller.split()
-                alias, params = temp[0], temp[1:]
-                testcase.controllers.append((alias, params))
+                if controller.startswith("*") or controller.startswith("~"):
+                    aliases = config.get_controllers().keys()
+                    if controller.startswith("~"):
+                        exclude = [n.strip().strip("~")
+                                   for n in controller.split("|")]
+                        aliases = set(aliases) - set(exclude)
+                    for alias in aliases:
+                        testcase.controllers.append((alias, []))
+                else:
+                    temp = controller.split()
+                    alias, params = temp[0], temp[1:]
+                    testcase.controllers.append((alias, params))
 
         return testcase
 

@@ -10,7 +10,7 @@ class App(object):
         if len(request.path_info + request.query_string) > 4096:
             return exc.HTTPRequestURITooLong()
 
-        if not request.path_info in ('/foo', '/baz', '/boh'):
+        if not request.path_info in ('/foo', '/baz', '/boh', '/bar'):
             return exc.HTTPNotFound()
         return 'ok'
 
