@@ -1,70 +1,18 @@
 import sys
-from ConfigParser import ConfigParser, NoOptionError
-from collections import namedtuple
 
-from webob.exc import HTTPException
-from webob.dec import wsgify
 from webtest import TestApp
-from walint.util import METHS, random_path
 
-
-class _CatchErrors(object):
-    def __init__(self, app):
-        self.app = app
-        if hasattr(app, 'registry'):
-            self.registry = app.registry
-
-    @wsgify
-    def __call__(self, request):
-        try:
-            return request.get_response(self.app)
-        except HTTPException, e:
-            return e
-
-Service = namedtuple('Service',
-                     ('name', 'path', 'methods', 'setup', 'teardown'))
-
-
-def _resolve_name(name):
-    ret = None
-    parts = name.split('.')
-    cursor = len(parts)
-    module_name = parts[:cursor]
-    last_exc = None
-
-    while cursor > 0:
-        try:
-            ret = __import__('.'.join(module_name))
-            break
-        except ImportError, exc:
-            last_exc = exc
-            if cursor == 0:
-                raise
-            cursor -= 1
-            module_name = parts[:cursor]
-
-    for part in parts[1:]:
-        try:
-            ret = getattr(ret, part)
-        except AttributeError:
-            if last_exc is not None:
-                raise last_exc
-            raise ImportError(name)
-
-    if ret is None:
-        if last_exc is not None:
-            raise last_exc
-        raise ImportError(name)
-
-    return ret
-
-OK = '\033[92m'
-FAIL = '\033[91m'
-BLUE = '\033[94m'
-ENDC = '\033[0m'
+from walint.util import resolve_name, CatchErrors
+from walint.config import WALintParser
 
 
 def _default_stream(msg, path=None, method=None, success=True):
+
+    OK = '\033[92m'
+    FAIL = '\033[91m'
+    BLUE = '\033[94m'
+    ENDC = '\033[0m'
+
     if path is not None:
         path = BLUE + '%s %s ' % (method, path) + ENDC
     else:
@@ -76,133 +24,71 @@ def _default_stream(msg, path=None, method=None, success=True):
         print(FAIL + '[KO] ' + ENDC + path + msg)
 
 
-def _get_function_desc(func, name):
-    """returns the docstring of the function, the name otherwise"""
-    msg = func.__doc__
-    if msg is None:
-        msg = name
-    return msg
-
-
-def run(app, singles, controllers, services, config, stream_result=None):
+def run(app, tests, controllers, services, config, stream_result=None):
     # what about global setup.teardown ?
     #
     results = []
     if stream_result is None:
         stream_result = _default_stream
 
-    for name, single in singles:
-        success = single(app, config)
-        msg = _get_function_desc(single, name)
-        stream_result(msg, None, None, success)
-        results.append((success, msg))
+    #for name, single in singles:
+    #    success = single(app, config)
+    #    msg = _get_function_desc(single, name)
+    #    stream_result(msg, None, None, success)
+    #    results.append((success, msg))
 
-    for name, controller in controllers:
-        msg = _get_function_desc(single, name)
+    for test_name, test in tests.items():
+        for name, methods in test.services:
+            service = services.get(name)
 
-        for service in services:
-            accepted_methods = getattr(controller, '_accepted_methods', METHS)
-            for method in set(service.methods) & set(accepted_methods):
-                if service.setup is not None:
-                    service.setup(app, config)
-                try:
-                    caller = getattr(app, method.lower())
-                    # if there is an entry for this service, then pass the
-                    # appropriate configuration objects
+            for alias, params in test.controllers:
+                controller = controllers.get(alias)
 
-                    success = controller(method, service, app, caller)
-                    stream_result(msg, service.path, method, success)
-                    results.append((success, msg))
-                finally:
-                    if service.teardown is not None:
-                        service.teardown(app, config)
+                # only get the authorised methods
+                for method in set(methods) & set(controller.methods):
+                    if service.setup is not None:
+                        service.setup(app, config)
 
+                    try:
+                        caller = getattr(app, method.lower())
+                        args = (method, service, app, caller)
+
+                        if controller.params is not None:
+                            args.append(controller.params)
+
+                        success = controller.func(*args)
+
+                        stream_result(test.name + controller.description,
+                                        service.path, method, success)
+                        results.append((success, controller.description))
+                    finally:
+                        if service.teardown is not None:
+                            service.teardown(app, config)
     return results
 
 
-def load_config(filename):
-    config = ConfigParser()
-    config.read(filename)
-    return config
-
-
-def build_app(config):
-    app = config.get('walint', 'root')
+def build_app(app):
     if app.startswith('http'):
         raise NotImplementedError()
-    return TestApp(_CatchErrors(_resolve_name(app)))
-
-
-def _resolve_ctrl(fqn):
-    return fqn, _resolve_name(fqn)
-
-
-def get_singles(config):
-    svcs = config.get('walint', 'singles')
-    return [(svc, _resolve_name(svc)) for svc in
-                [svc.strip() for svc in svcs.split('\n')]
-             if svc != '']
-
-
-def get_services(config):
-    svcs = config.get('walint', 'services')
-    svcs = [svc for svc in
-                [svc.strip() for svc in svcs.split('\n')]
-             if svc != '']
-
-    res = []
-    for svc in svcs:
-        path = config.get(svc, 'path')
-        if path == '?':
-            path = random_path()
-        methods = [meth.strip() for meth in
-                    config.get(svc, 'methods').split('|')
-                   if meth.strip() != '']
-        if methods == ['*']:
-            methods = METHS
-        try:
-            setup = _resolve_name(config.get(svc, 'setup'))
-        except NoOptionError:
-            setup = None
-        try:
-            teardown = _resolve_name(config.get(svc, 'teardown'))
-        except NoOptionError:
-            teardown = None
-
-        res.append(Service(svc, path, methods, setup, teardown))
-    return res
-
-
-def get_controllers(config):
-    ctrls = config.get('walint', 'controllers')
-    return  [_resolve_ctrl(ctrl) for ctrl in
-                [ctrl.strip() for ctrl in ctrls.split('\n')]
-             if ctrl != '']
+    return TestApp(CatchErrors(resolve_name(app)))
 
 
 def main(filename):
     # load the config
-    config = load_config(filename)
+    config = WALintParser()
+    config.read(filename)
 
-    try:
-        stream = config.get('walint', 'stream')
-    except NoOptionError:
-        stream = None
+    stream = config.get('walint', 'stream')
 
     # creating the app client
-    app = build_app(config)
-
-    # getting the list of controllers
-    controllers = get_controllers(config)
-
-    # getting the list of services to test
-    services = get_services(config)
+    app = build_app(config.get('walint', 'root'))
 
     # getting singles
-    singles = get_singles(config)
+    # singles = get_singles(config) # XXX fix this
 
     # now running the tests
-    results = run(app, singles, controllers, services, config, stream)
+    results = run(app, config.tests(), config.controllers(),
+                  config.services(), config.root_options(), stream)
 
     return results
 
