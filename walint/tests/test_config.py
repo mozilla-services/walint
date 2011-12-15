@@ -1,7 +1,29 @@
 from unittest import TestCase
 import io
 
-from walint.config import WALintParser, Test, Service, Controller
+from walint.config import WalintParser, WalintTestCase, Service, Controller
+
+_SAMPLE_CONFIG = """
+[controller:ctrl1]
+location = test
+global_option = value
+global_option2 = value2
+
+[service:bar]
+path = /bar
+methods = GET|PUT
+
+[test:testone]
+setup = walint.tests.test_config.foo
+teardown = walint.tests.test_config.foo
+
+services =
+    foo GET
+    bar *
+
+controllers =
+     ctrl1 param1 param2
+"""
 
 
 def test_controller(*args, **kwargs):
@@ -26,13 +48,8 @@ class TestConfig(TestCase):
         self.assertTrue(controller.description, 'This is a test controller')
 
     def test_controller_config(self):
-        ini = """
-[controller:ctrl1]
-location = test
-global_option = value
-global_option2 = value2"""
-        config = WALintParser()
-        config.readfp(io.BytesIO(ini))
+        config = WalintParser()
+        config.readfp(io.BytesIO(_SAMPLE_CONFIG))
 
         controller = Controller.from_config(config, "controller:ctrl1")
         self.assertEquals(controller.alias, "ctrl1")
@@ -41,34 +58,18 @@ global_option2 = value2"""
         self.assertEqual(controller.options["global_option"], "value")
 
     def test_service_config(self):
-        ini = """
-[service:bar]
-path = /bar
-methods = GET|PUT
-        """
-        config = WALintParser()
-        config.readfp(io.BytesIO(ini))
+        config = WalintParser()
+        config.readfp(io.BytesIO(_SAMPLE_CONFIG))
 
         service = Service.from_config(config, "service:bar")
         self.assertEquals(service.path, "/bar")
         self.assertEquals(service.methods, ["GET", "PUT"])
 
     def test_test_config(self):
-        ini = """
-[test:testone]
-setup = walint.tests.test_config.foo
-teardown = walint.tests.test_config.foo
+        config = WalintParser()
+        config.readfp(io.BytesIO(_SAMPLE_CONFIG))
 
-services =
-    foo GET
-    bar *
-
-controllers =
-     ctrl1 param1 param2"""
-        config = WALintParser()
-        config.readfp(io.BytesIO(ini))
-
-        test = Test.from_config(config, "test:testone")
+        test = WalintTestCase.from_config(config, "test:testone")
         self.assertEquals(test.name, "testone")
         self.assertEqual(test.setup, foo)
         self.assertEqual(test.teardown, foo)

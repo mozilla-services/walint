@@ -2,26 +2,8 @@ import sys
 
 from webtest import TestApp
 
-from walint.util import resolve_name, CatchErrors
-from walint.config import WALintParser
-
-
-def _default_stream(msg, path=None, method=None, success=True):
-
-    OK = '\033[92m'
-    FAIL = '\033[91m'
-    BLUE = '\033[94m'
-    ENDC = '\033[0m'
-
-    if path is not None:
-        path = BLUE + '%s %s ' % (method, path) + ENDC
-    else:
-        path = ''
-
-    if success:
-        print(OK + '[OK] ' + ENDC + path + msg)
-    else:
-        print(FAIL + '[KO] ' + ENDC + path + msg)
+from walint.util import resolve_name, CatchErrors, default_stream
+from walint.config import WalintParser
 
 
 def run(app, tests, controllers, services, config, stream_result=None):
@@ -29,7 +11,7 @@ def run(app, tests, controllers, services, config, stream_result=None):
     #
     results = []
     if stream_result is None:
-        stream_result = _default_stream
+        stream_result = default_stream
 
     #for name, single in singles:
     #    success = single(app, config)
@@ -75,7 +57,7 @@ def build_app(app):
 
 def main(filename):
     # load the config
-    config = WALintParser()
+    config = WalintParser()
     config.read(filename)
 
     stream = config.get('walint', 'stream')
@@ -87,8 +69,8 @@ def main(filename):
     # singles = get_singles(config) # XXX fix this
 
     # now running the tests
-    results = run(app, config.tests(), config.controllers(),
-                  config.services(), config.root_options(), stream)
+    results = run(app, config.get_tests(), config.get_controllers(),
+                  config.get_services(), config.root_options(), stream)
 
     return results
 

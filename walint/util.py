@@ -32,6 +32,24 @@ def accept(methods):
     return wrapper
 
 
+def default_stream(msg, path=None, method=None, success=True):
+
+    OK = '\033[92m'
+    FAIL = '\033[91m'
+    BLUE = '\033[94m'
+    ENDC = '\033[0m'
+
+    if path is not None:
+        path = BLUE + '%s %s ' % (method, path) + ENDC
+    else:
+        path = ''
+
+    if success:
+        print(OK + '[OK] ' + ENDC + path + msg)
+    else:
+        print(FAIL + '[KO] ' + ENDC + path + msg)
+
+
 def resolve_name(name):
     ret = None
     parts = name.split('.')

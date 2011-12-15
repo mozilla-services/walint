@@ -28,20 +28,20 @@ class SetupTearDownMixin(object):
         self._teardown = value
 
 
-class Test(SetupTearDownMixin):
+class WalintTestCase(SetupTearDownMixin):
     def __init__(self, name, controllers=None, services=None, *args, **kwargs):
+        super(WalintTestCase, self).__init__(*args, **kwargs)
         self.name = name
         self.controllers = controllers or []
         self.services = services or []
-        super(Test, self).__init__(*args, **kwargs)
 
     @classmethod
     def from_config(cls, config, section):
-        _, name = section.split(':')
+        _, name = section.split(':', 1)
 
-        test = cls(name)
-        test.setup = config.get(section, "setup")
-        test.teardown = config.get(section, "teardown")
+        testcase = cls(name)
+        testcase.setup = config.get(section, "setup")
+        testcase.teardown = config.get(section, "teardown")
 
         # get the list of services
         services = config.get(section, "services") or "* *"
@@ -49,8 +49,8 @@ class Test(SetupTearDownMixin):
 
         for service in services:
             if service:
-                name, methods = service.split(" ")
-                test.services.append((name, methods.split('|')))
+                name, methods = service.split()
+                testcase.services.append((name, methods.split('|')))
                 # XXX handle wildcards
 
         controllers = config.get(section, "controllers") or ""
@@ -58,11 +58,11 @@ class Test(SetupTearDownMixin):
 
         for controller in controllers:
             if controller:
-                temp = controller.split(" ")
+                temp = controller.split()
                 alias, params = temp[0], temp[1:]
-                test.controllers.append((alias, params))
+                testcase.controllers.append((alias, params))
 
-        return test
+        return testcase
 
 
 class Service(SetupTearDownMixin):
@@ -79,7 +79,7 @@ class Service(SetupTearDownMixin):
         path = config.get(section, 'path')
         methods = config.get(section, 'methods')
         if methods:
-            methods = methods.split("|")
+            methods = map(str.strip, methods.split("|"))
         else:
             methods = METHS
 
@@ -162,7 +162,7 @@ class NamespacedConfigParser(ConfigParser):
             return default
 
 
-class WALintParser(NamespacedConfigParser):
+class WalintParser(NamespacedConfigParser):
     """Provides facilities to access the WALint configuration files.
     Also, some access is cached to avoid parsing the INI file multiple times
     """
@@ -187,24 +187,24 @@ class WALintParser(NamespacedConfigParser):
     def get_test(self, name):
         if not name in self._tests:
             self._tests[name] = \
-                    Test.from_config(self, 'test:%s' % name)
+                    WalintTestCase.from_config(self, 'test:%s' % name)
         return self._tests[name]
 
-    def services(self):
+    def get_services(self):
         if not self._services:
             for section, name in self.sections(namespace="service",
                     return_name=True):
                 self.get_service(name)
         return self._services
 
-    def controllers(self):
+    def get_controllers(self):
         if not self._controllers:
             for section, name in self.sections(namespace="controller",
                     return_name=True):
                 self.get_controller(name)
         return self._controllers
 
-    def tests(self):
+    def get_tests(self):
         if not self._tests:
             for section, name in self.sections(namespace="test",
                     return_name=True):
