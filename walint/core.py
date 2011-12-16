@@ -40,8 +40,10 @@ def run(app, tests, controllers, services, config, stream_result=None):
 
                         success = controller.func(*args)
 
-                        stream_result(test.name + controller.description,
-                                        service.path, method, success)
+                        stream_result("[%s] %s" % (test.name,
+                                                   controller.description),
+                                      service.path, method, success)
+
                         results.append((success, controller.description))
                     finally:
                         if service.teardown is not None:
