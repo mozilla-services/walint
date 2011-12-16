@@ -26,17 +26,17 @@ def run(app, tests, controllers, services, config, stream_result=None):
             for alias, params in test.controllers:
                 controller = controllers.get(alias)
 
-                # only get the authorised methods
+                # only get the authorized methods
                 for method in set(methods) & set(controller.methods):
                     if service.setup is not None:
                         service.setup(app, config)
 
                     try:
                         caller = getattr(app, method.lower())
-                        args = (method, service, app, caller)
+                        args = [method, service, app, caller, config]
 
-                        if controller.params is not None:
-                            args.append(controller.params)
+                        if params is not None:
+                            args.append(params)
 
                         success = controller.func(*args)
 
