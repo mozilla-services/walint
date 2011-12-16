@@ -14,11 +14,6 @@ class TestController(TestCase):
 
     def test_basic_auth(self):
         # the controller should test wrong credentials fails
-        ret = controllers.auth_basic("get",
-                   Service("bar", "/bar", ["GET", "POST"]),
-                   app, app.get, {}, ('foo', ''))
-        self.assertFalse(ret)
-
         # and good ones works
         ret = controllers.auth_basic("get",
                    Service("bar", "/bar", ["GET", "POST"]),
