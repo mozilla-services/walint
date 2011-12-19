@@ -1,9 +1,38 @@
 from ConfigParser import ConfigParser, NoOptionError
+from functools import partial
+
 from walint.util import resolve_name, METHS
 
-_CONTROLLER_KEYS = ("location", "setup", "teardown")
+_CONTROLLER_KEYS = ("location", "setup", "teardown", "params")
 _SERVICES_KEYS = ("path", "methods", "setup", "teardown")
-_TEST_KEYS = ("setup", "teardown", "services", "controllers")
+_TEST_KEYS = ("setup", "teardown", "services", "controllers", "singles")
+
+
+def get_controllers(config, section, key="controller"):
+
+    controller_list = []
+
+    # and the list of controllers
+    controllers = config.get(section, "%ss" % key) or ""
+    controllers = map(str.strip, controllers.split("\n"))
+
+    for controller in controllers:
+        if controller:
+            if controller.startswith("*") or\
+                    controller.startswith("~"):
+                aliases = config.get_namespace(key).keys()
+                if controller.startswith("~"):
+                    exclude = [n.strip().strip("~")
+                               for n in controller.split("|")]
+                    aliases = set(aliases) - set(exclude)
+                for alias in aliases:
+                    controller_list.append((alias, []))
+            else:
+                temp = controller.split()
+                alias, params = temp[0], temp[1:]
+                controller_list.append((alias, params))
+
+    return controller_list
 
 
 class SetupTearDownMixin(object):
@@ -77,24 +106,9 @@ class WalintTestCase(SetupTearDownMixin):
                 for name in names:
                     testcase.services.append((name, methods))
 
-        # and the list of controllers
-        controllers = config.get(section, "controllers") or ""
-        controllers = map(str.strip, controllers.split("\n"))
-
-        for controller in controllers:
-            if controller:
-                if controller.startswith("*") or controller.startswith("~"):
-                    aliases = config.get_controllers().keys()
-                    if controller.startswith("~"):
-                        exclude = [n.strip().strip("~")
-                                   for n in controller.split("|")]
-                        aliases = set(aliases) - set(exclude)
-                    for alias in aliases:
-                        testcase.controllers.append((alias, []))
-                else:
-                    temp = controller.split()
-                    alias, params = temp[0], temp[1:]
-                    testcase.controllers.append((alias, params))
+        # get the list of controllers and singles
+        testcase.controllers = get_controllers(config, section, "controller")
+        testcase.singles = get_controllers(config, section, "single")
 
         return testcase
 
@@ -159,6 +173,9 @@ class Controller(SetupTearDownMixin):
         _, alias = section.split(':')
 
         location = config.get(section, 'location')
+        params = config.get(section, 'params', [])
+        if params:
+            params = params.split()
 
         # read the optional options passed to the section
         keys = [option for option in config.options(section)
@@ -168,7 +185,11 @@ class Controller(SetupTearDownMixin):
         for key in keys:
             options[key] = config.get(section, key)
 
-        return cls(alias, location=location, **options)
+        return cls(alias, params=params, location=location, **options)
+
+
+class Single(Controller):
+    """A controller which run only once per serie of tests"""
 
 
 class NamespacedConfigParser(ConfigParser):
@@ -201,49 +222,41 @@ class WalintParser(NamespacedConfigParser):
     Also, some access is cached to avoid parsing the INI file multiple times
     """
     def __init__(self, *args, **kwargs):
-        self._services = {}
-        self._controllers = {}
-        self._tests = {}
+        self._classes = {'test': WalintTestCase,
+                         'controller': Controller,
+                         'service': Service,
+                         'single': Single}
+
+        # aliases
+        self.get_tests = partial(self.get_namespace, "test")
+        self.get_services = partial(self.get_namespace, "service")
+        self.get_singles = partial(self.get_namespace, "single")
+        self.get_controllers = partial(self.get_namespace, "controller")
+
+        self.get_test = partial(self.get_prefixed, "test")
+        self.get_controller = partial(self.get_prefixed, "controller")
+        self.get_service = partial(self.get_prefixed, "service")
+        self.get_single = partial(self.get_prefixed, "single")
+
         return NamespacedConfigParser.__init__(self)
 
-    def get_service(self, name):
-        if not name in self._services:
-            self._services[name] = \
-                    Service.from_config(self, 'service:%s' % name)
-        return self._services[name]
+    def get_prefixed(self, prefix, name):
+        _prefix = "_%ss" % prefix
+        if not hasattr(self, _prefix):
+            setattr(self, _prefix, {})
 
-    def get_controller(self, name):
-        if not name in self._controllers:
-            self._controllers[name] = \
-                    Controller.from_config(self, 'controller:%s' % name)
-        return self._controllers[name]
+        elements = getattr(self, _prefix)
+        if not name in elements:
+            elements[name] = self._classes.get(prefix)\
+                    .from_config(self, "%s:%s" % (prefix, name))
+        return elements
 
-    def get_test(self, name):
-        if not name in self._tests:
-            self._tests[name] = \
-                    WalintTestCase.from_config(self, 'test:%s' % name)
-        return self._tests[name]
-
-    def get_services(self):
-        if not self._services:
-            for section, name in self.sections(namespace="service",
+    def get_namespace(self, namespace):
+        if not hasattr(self, "_%ss" % namespace):
+            for section, name in self.sections(namespace=namespace,
                     return_name=True):
-                self.get_service(name)
-        return self._services
-
-    def get_controllers(self):
-        if not self._controllers:
-            for section, name in self.sections(namespace="controller",
-                    return_name=True):
-                self.get_controller(name)
-        return self._controllers
-
-    def get_tests(self):
-        if not self._tests:
-            for section, name in self.sections(namespace="test",
-                    return_name=True):
-                self.get_test(name)
-        return self._tests
+                self.get_prefixed(namespace, name)
+        return getattr(self, "_%ss" % namespace, {})
 
     def root_options(self, section="walint"):
         return dict(self.items(section))
