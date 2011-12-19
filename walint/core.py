@@ -10,9 +10,6 @@ def run(app, tests, controllers, services, singles, config,
         stream_result=None):
 
     def _call_controller(controller, params, method=None, service=None):
-        if not isinstance(controller, Controller):
-            controller = Controller(controller, params, controller)
-
         # a controller is setup for each method
         if controller.setup is not None:
             controller.setup(app, config)
@@ -20,7 +17,7 @@ def run(app, tests, controllers, services, singles, config,
         try:
             if not method:
                 # it's a single
-                args = [app, config]
+                args = [app, config, services]
             else:
                 caller = getattr(app, method.lower())
                 args = [method, service, app, caller, config]
@@ -56,9 +53,8 @@ def run(app, tests, controllers, services, singles, config,
 
         # call singles
         for alias, params in test.singles:
-            single = singles.get(alias) if alias in singles else alias
-            if single:
-                results.append(_call_controller(single, params))
+            single = singles.get(alias, Controller(alias, params, alias))
+            results.append(_call_controller(single, params))
 
         # loop on services / controllers / methods
         for name, methods in test.services:
@@ -69,7 +65,8 @@ def run(app, tests, controllers, services, singles, config,
 
             try:
                 for alias, params in test.controllers:
-                    controller = controllers.get(alias)
+                    controller = controllers.get(alias,
+                                    Controller(alias, params, alias))
 
                     # only get the authorized methods
                     for method in set(methods) & set(controller.methods):
