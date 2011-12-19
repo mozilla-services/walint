@@ -114,10 +114,11 @@ class WalintTestCase(SetupTearDownMixin):
 
 
 class Service(SetupTearDownMixin):
-    def __init__(self, name, path, methods, *args, **kwargs):
+    def __init__(self, name, path, methods, options=None, *args, **kwargs):
         self.name = name
         self.path = path
         self.methods = methods
+        self.options = options or {}
         super(Service, self).__init__(*args, **kwargs)
 
     @classmethod
@@ -131,7 +132,14 @@ class Service(SetupTearDownMixin):
         else:
             methods = METHS
 
-        return cls(name, path, methods)
+        keys = [option for option in config.options(section)
+                   if option not in _SERVICES_KEYS]
+
+        options = {}
+        for key in keys:
+            options[key] = config.get(section, key)
+        
+        return cls(name, path, methods, options)
 
 
 class Controller(SetupTearDownMixin):
