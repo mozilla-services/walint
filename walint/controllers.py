@@ -1,32 +1,7 @@
 """ Default controllers """
 import base64
 
-from webtest.app import AppError
-
-from walint.util import METHS, random_path
-from walint import logger
-from walint.util import accept
-
-
-def _err(caller, path, **kwargs):
-    try:
-        caller(path, **kwargs)
-    except AppError, res:
-        logger.error(str(res))
-        # XXX
-        print(res)
-        return False
-    return True
-
-
-def check_404(app, config):
-    """Makes sure non-existant paths return a 404"""
-    path = random_path()
-    for meth in METHS:
-        caller = getattr(app, meth.lower())
-        if not _err(caller, path, status=404):
-            return False
-    return True
+from walint.util import accept, _err
 
 
 def check_414(method, service, app, caller, config):

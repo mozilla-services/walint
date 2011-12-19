@@ -4,10 +4,24 @@ import functools
 
 from webob.dec import wsgify
 from webob.exc import HTTPException
+from webtest.app import AppError
+
+from walint import logger
 
 # TRACE and CONNECT not supported
 METHS = ('GET', 'PUT', 'HEAD', 'DELETE', 'POST',
          'OPTIONS')
+
+
+def _err(caller, path, **kwargs):
+    try:
+        caller(path, **kwargs)
+    except AppError, res:
+        logger.error(str(res))
+        # XXX
+        print(res)
+        return False
+    return True
 
 
 def random_path(size=10):

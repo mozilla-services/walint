@@ -7,6 +7,7 @@ from walint.util import METHS
 _SAMPLE_CONFIG = """
 [controller:ctrl1]
 location = test
+params = p1 p2
 global_option = value
 global_option2 = value2
 
@@ -76,6 +77,7 @@ class TestConfig(TestCase):
         self.assertEquals(controller.location, "test")
         self.assertTrue("global_option" in controller.options.keys())
         self.assertEqual(controller.options["global_option"], "value")
+        self.assertEqual(controller.params, ["p1", "p2"])
 
     def test_service_config(self):
         config = WalintParser()

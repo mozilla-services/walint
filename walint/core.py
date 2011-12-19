@@ -3,51 +3,79 @@ import sys
 from webtest import TestApp
 
 from walint.util import resolve_name, CatchErrors, default_stream
-from walint.config import WalintParser
+from walint.config import WalintParser, Controller
 
 
-def run(app, tests, controllers, services, config, stream_result=None):
-    # what about global setup.teardown ?
-    #
+def run(app, tests, controllers, services, singles, config,
+        stream_result=None):
+
+    def _call_controller(controller, params, method=None, service=None):
+        if not isinstance(controller, Controller):
+            controller = Controller(controller, params, controller)
+
+        # a controller is setup for each method
+        if controller.setup is not None:
+            controller.setup(app, config)
+
+        try:
+            if not method:
+                # it's a single
+                args = [app, config]
+            else:
+                caller = getattr(app, method.lower())
+                args = [method, service, app, caller, config]
+
+            # get the params defined in the test, fallback to the ctl
+            # definition
+            if params:
+                args.append(params)
+            elif controller.params:
+                args.append(controller.params)
+
+            success = controller.func(*args)
+
+            stream_result("[%s] %s" % (test.name, controller.description),
+                          getattr(service, 'path', None), method, success)
+
+            return (success, controller.description)
+
+        finally:
+            if controller.teardown is not None:
+                controller.teardown(app, config)
+
     results = []
     if stream_result is None:
         stream_result = default_stream
 
-    #for name, single in singles:
-    #    success = single(app, config)
-    #    msg = _get_function_desc(single, name)
-    #    stream_result(msg, None, None, success)
-    #    results.append((success, msg))
-
     for test_name, test in tests.items():
+
+        # call singles
+        for alias, params in test.singles:
+            single = singles.get(alias) if alias in singles else alias
+            if single:
+                results.append(_call_controller(single, params))
+
+        # loop on services / controllers / methods
         for name, methods in test.services:
             service = services.get(name)
 
-            for alias, params in test.controllers:
-                controller = controllers.get(alias)
+            if service.setup is not None:
+                service.setup(app, config)
 
-                # only get the authorized methods
-                for method in set(methods) & set(controller.methods):
-                    if service.setup is not None:
-                        service.setup(app, config)
+            try:
+                for alias, params in test.controllers:
+                    controller = controllers.get(alias)
 
-                    try:
-                        caller = getattr(app, method.lower())
-                        args = [method, service, app, caller, config]
+                    # only get the authorized methods
+                    for method in set(methods) & set(controller.methods):
+                        results.append(
+                                _call_controller(controller, params, method,
+                                                 service))
 
-                        if params is not None:
-                            args.append(params)
+            finally:
+                if service.teardown is not None:
+                    service.teardown()
 
-                        success = controller.func(*args)
-
-                        stream_result("[%s] %s" % (test.name,
-                                                   controller.description),
-                                      service.path, method, success)
-
-                        results.append((success, controller.description))
-                    finally:
-                        if service.teardown is not None:
-                            service.teardown(app, config)
     return results
 
 
@@ -67,12 +95,10 @@ def main(filename):
     # creating the app client
     app = build_app(config.get('walint', 'root'))
 
-    # getting singles
-    # singles = get_singles(config) # XXX fix this
-
     # now running the tests
     results = run(app, config.get_tests(), config.get_controllers(),
-                  config.get_services(), config.root_options(), stream)
+                  config.get_services(), config.get_singles(),
+                  config.root_options(), stream)
 
     return results
 
