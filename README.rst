@@ -10,35 +10,45 @@ an example configuration file::
 
     [walint]
     root = walint.tests.testapp.application
-    tests = walint.controllers.check_414
-            walint.controllers.broken_json
 
-    setup = walint.tests.test_script.setup
-    teardown = walint.tests.test_script.teardown
+    ; you can define controllers with an alias so they are easy to use multiple
+    ; times
+    [controller:auth-basic]
+    location = walint.controllers.auth_basic
+    params = foo bar
 
-    services = foo
-               baz
+    ; services defines paths and methods.
+    [service:bar]
+    path = /bar
+    methods = GET|PUT|POST
 
-    [foo]
-    path = /foo
-    methods = GET|POST|PUT
-    setup = walint.tests.test_script.add_auth_header
-    teardown = walint.tests.test_script.cleanup_stuff
-
-    [baz]
+    [service:baz]
     path = /baz
-    methods = POST
+    methods = *
 
-Here, the `/foo` and `/baz` services will be tested against the tests listed in
-the `tests` configuraton key.
+    [test:testauth]
+    ; Test for basic authentication on bar and baz
+    services =
+        bar GET
+        baz PUT|POST
+
+    controllers = auth-basic
+
+    ; singles are run only once (they get all the defined services
+    ; as an argument and the configuration)
+    singles = walint.singles.check_404
+
+Here, the `/bar` and `/baz` services will be tested against basic
+authentication, only for the specified methods.
 
 Once installed, WALint provides a `walint` CLI script you can use to invoke
 it::
 
     $ walint walint.cfg
 
-WALint can run against WSGI endpoints and real URLs. If you specify a WSGI
-endpoint, you can also specify the `PYTHON_PATH` to use in the configuration.
+WALint can run against WSGI endpoints and real URLs, defined in the `walint`
+section, by the `root` key. If you specify a WSGI endpoint, you can also 
+specify the `PYTHON_PATH` to use in the configuration.
 
 Writing Controllers
 ===================

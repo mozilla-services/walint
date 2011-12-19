@@ -43,6 +43,11 @@ def run(app, tests, controllers, services, singles, config,
             if controller.teardown is not None:
                 controller.teardown(app, config)
 
+    # if the `python-path` is specified in the configuration, append the given
+    # path to the existing one
+    if 'python-path' in config:
+        sys.path.append(config['python-path'])
+
     results = []
     if stream_result is None:
         stream_result = default_stream
@@ -71,7 +76,6 @@ def run(app, tests, controllers, services, singles, config,
                         results.append(
                                 _call_controller(controller, params, method,
                                                  service))
-
             finally:
                 if service.teardown is not None:
                     service.teardown()
