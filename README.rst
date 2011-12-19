@@ -136,7 +136,8 @@ So you can define something like this::
 
     controllers = ~auth-basic
 
-And all the controllers would match, except this partitular one.
+And all the controllers **defined in the configuration file** would match, except
+this partitular one.
 
 Writing Controllers
 ===================
