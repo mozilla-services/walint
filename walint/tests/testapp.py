@@ -15,7 +15,11 @@ def ok(request):
 
 def need_auth(request):
     auth = AuthBasicAuthenticator("walint", check_credentials)
-    username = auth(request.environ)
+    try:
+        username = auth(request.environ)
+    except ValueError:
+        return exc.HTTPBadRequest()
+
     if username == _USERNAME:
         return ok(request)
     return username

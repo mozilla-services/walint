@@ -46,3 +46,9 @@ def auth_basic(method, service, app, caller, config, credentials=None):
     return _err(caller, service.path,
                 headers={"Authorization": "Basic %s" % base64string},
                 status=200)
+
+
+def auth_breaker(method, service, app, caller, config):
+    """Broken authorization headers returns a 401"""
+    return _err(caller, service.path, headers={"Authorization": "yeah!"},
+                status=400)
