@@ -13,9 +13,16 @@ app = TestApp(CatchErrors(application))
 class TestController(TestCase):
 
     def test_basic_auth(self):
-        # the controller should test wrong credentials fails
-        # and good ones works
-        ret = controllers.auth_basic("get",
+        self.assertTrue(controllers.auth_basic("get",
                    Service("bar", "/bar", ["GET", "POST"]),
-                   app, app.get, {}, ('foo', 'bar'))
-        self.assertTrue(ret)
+                   app, app.get, {}, ('foo', 'bar')))
+
+    def test_json_breaker(self):
+        self.assertTrue(controllers.json_breaker("post",
+                Service("bar", "/bar", ["POST", "PUT"]),
+                app, app.post, {}))
+
+    def test_auth_breaker(self):
+        self.assertTrue(controllers.auth_breaker("get",
+                Service("bar", "/bar", ["get", "GET"]),
+                app, app.get, {}))
