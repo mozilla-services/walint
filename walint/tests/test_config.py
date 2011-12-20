@@ -87,7 +87,7 @@ class TestConfig(TestCase):
         service = Service.from_config(config, "service:bar")
         self.assertEquals(service.path, "/bar")
         self.assertEquals(service.methods, ["GET", "PUT"])
-        self.assertTrue('params' in service.options)
+        self.assertEquals(service.params, ['foo', 'bar'])
 
     def test_test_config(self):
         config = WalintParser()

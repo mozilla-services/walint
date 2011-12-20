@@ -1,6 +1,7 @@
+import json
+
 from webob.dec import wsgify
 from webob import exc
-
 from paste.auth.basic import AuthBasicAuthenticator
 
 _SERVICES_PATHS = ('/public', '/baz', '/boh', '/bar')
@@ -24,11 +25,23 @@ def check_credentials(environ, username, password):
     return username == _USERNAME and password == _PASSWORD
 
 
+def consume_params(request):
+    # we want to deserialize "heh" and "yeah".
+    if 'application/json' in request.accept:
+        for param in request.params.keys():
+            try:
+                json.loads(request.params[param])
+            except ValueError:
+                return  exc.HTTPBadRequest()
+        return ok(request)
+
 #A mapping of (paths, method) to callables
 _ROUTES = {
         ('/bar', 'GET'): need_auth,
         ('/baz', 'PUT'): need_auth,
         ('/baz', 'POST'): need_auth,
+        ('/bar', 'PUT'): consume_params,
+        ('/bar', 'POST'): consume_params,
 }
 
 

@@ -11,11 +11,14 @@ def check_414(method, service, app, caller, config):
 
 
 @accept(["POST", "PUT"])
-def broken_json(method, service, app, caller):
-    """Sending a broken JSON object returns a 400"""
-    # getting info from the service being tested: which parameter should
-    # be used?
-    pass
+def json_breaker(method, service, app, caller, config):
+    """Sending a broken JSON object returns a 400/200"""
+
+    bomb = {}
+    for param in service.params:
+        bomb[param] = "{test:json]"  # aouch!
+
+    return _err(caller, service.path, params=bomb, status=[200, 400])
 
 
 def auth_basic(method, service, app, caller, config, credentials=None):
