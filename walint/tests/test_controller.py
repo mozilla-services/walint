@@ -24,5 +24,10 @@ class TestController(TestCase):
 
     def test_auth_breaker(self):
         self.assertTrue(controllers.auth_breaker("get",
-                Service("bar", "/bar", ["get", "GET"]),
+                Service("bar", "/bar", ["GET", ]),
+                app, app.get, {}))
+
+    def test_414(self):
+        self.assertTrue(controllers.check_414("get",
+                Service("bar", "/bar", ["GET", ]),
                 app, app.get, {}))
