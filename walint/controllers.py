@@ -52,3 +52,9 @@ def auth_breaker(method, service, app, caller, config):
     """Broken authorization headers returns a 401"""
     return _err(caller, service.path, headers={"Authorization": "yeah!"},
                 status=400)
+
+
+def check_406(method, service, app, caller, config):
+    """Unsupported Content-Type values in the headers returns a 406"""
+    return _err(caller, service.path, headers={"Accept": "cheese"},
+            status=406)

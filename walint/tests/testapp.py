@@ -38,14 +38,16 @@ def consume_params(request):
             except ValueError:
                 return  exc.HTTPBadRequest()
         return ok(request)
+    else:
+        raise exc.HTTPNotAcceptable()
 
 #A mapping of (paths, method) to callables
 _ROUTES = {
         ('/bar', 'GET'): need_auth,
-        ('/baz', 'PUT'): need_auth,
-        ('/baz', 'POST'): need_auth,
         ('/bar', 'PUT'): consume_params,
         ('/bar', 'POST'): consume_params,
+        ('/baz', 'PUT'): need_auth,
+        ('/baz', 'POST'): need_auth,
 }
 
 

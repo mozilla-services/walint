@@ -31,3 +31,8 @@ class TestController(TestCase):
         self.assertTrue(controllers.check_414("get",
                 Service("bar", "/bar", ["GET", ]),
                 app, app.get, {}))
+
+    def test_406(self):
+        self.assertTrue(controllers.check_406("post",
+                Service("bar", "/bar", ["POST", ]),
+                app, app.post, {}))
