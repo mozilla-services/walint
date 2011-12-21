@@ -76,14 +76,15 @@ def check_411(method, service, app, caller, config):
 
 
 @accept(["PUT", "POST"])
-def check_413(method, service, app, caller, config, params):
+def check_413(method, service, app, caller, config, params=[]):
     """Large PUT|POST returns a 413"""
     size = int(params[0] if len(params) > 0 else 3)
     big_string = u"a" * 1048613 * size  # "a" is about 1 byte.
     return _err(caller, service.path, params={"test": big_string}, status=413)
 
 
-def check_414(method, service, app, caller, config):
+def check_414(method, service, app, caller, config, params=[]):
     """Checks that uri > 4096 generates a 414"""
-    path = service.path + '?' + 'o' * 5000 + '=1'
+    size = int(params[0] if len(params) > 0 else 5000)
+    path = service.path + '?' + 'o' * size + '=1'
     return _err(caller, path, status=414)
