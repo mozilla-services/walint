@@ -27,12 +27,22 @@ class TestController(TestCase):
                 Service("bar", "/bar", ["GET", ]),
                 app, app.get, {}))
 
-    def test_414(self):
-        self.assertTrue(controllers.check_414("get",
-                Service("bar", "/bar", ["GET", ]),
-                app, app.get, {}))
-
     def test_406(self):
         self.assertTrue(controllers.check_406("post",
                 Service("bar", "/bar", ["POST", ]),
                 app, app.post, {}))
+
+    def test_411(self):
+        self.assertTrue(controllers.check_411("post",
+            Service("bar", "/bar", ["POST", ]),
+            app, app.post, {}))
+
+    def test_413(self):
+        self.assertTrue(controllers.check_413("post",
+            Service("bar", "/bar", ["POST", ]),
+            app, app.post, {}, [3, ]))
+
+    def test_414(self):
+        self.assertTrue(controllers.check_414("get",
+                Service("bar", "/bar", ["GET", ]),
+                app, app.get, {}))

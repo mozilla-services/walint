@@ -1,13 +1,9 @@
 """ Default controllers """
 import base64
 
+from webtest.app import TestRequest
+
 from walint.util import accept, _err
-
-
-def check_414(method, service, app, caller, config):
-    """Checks that uri > 4096 generates a 414"""
-    path = service.path + '?' + 'o' * 5000 + '=1'
-    return _err(caller, path, status=414)
 
 
 @accept(["POST", "PUT"])
@@ -58,3 +54,36 @@ def check_406(method, service, app, caller, config):
     """Unsupported Content-Type values in the headers returns a 406"""
     return _err(caller, service.path, headers={"Accept": "cheese"},
             status=406)
+
+
+@accept(["PUT", "POST"])
+def check_411(method, service, app, caller, config):
+    """Missing content-length on PUT or POST returns a 411"""
+    class PatchedRequest(TestRequest):
+        """Patched to remove Content-Length"""
+        @classmethod
+        def blank(cls, path, environ=None, **kw):
+            environ.pop('CONTENT_LENGTH')
+            return super(PatchedRequest, cls).blank(path, environ, *kw)
+
+    # monkey patch!
+    _old = app.RequestClass
+    app.RequestClass = PatchedRequest
+    try:
+        return _err(caller, service.path, params={"test": "yay"}, status=411)
+    finally:
+        app.RequestClass = _old
+
+
+@accept(["PUT", "POST"])
+def check_413(method, service, app, caller, config, params):
+    """Large PUT|POST returns a 413"""
+    size = int(params[0] if len(params) > 0 else 3)
+    big_string = u"a" * 1048613 * size  # "a" is about 1 byte.
+    return _err(caller, service.path, params={"test": big_string}, status=413)
+
+
+def check_414(method, service, app, caller, config):
+    """Checks that uri > 4096 generates a 414"""
+    path = service.path + '?' + 'o' * 5000 + '=1'
+    return _err(caller, path, status=414)

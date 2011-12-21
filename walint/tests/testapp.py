@@ -58,6 +58,14 @@ class App(object):
     def __call__(self, request):
         if len(request.path_info + request.query_string) > 4096:
             return exc.HTTPRequestURITooLong()
+        
+        if request.method in ['PUT', 'POST']:
+            if 'Content-Length' in request.headers and\
+                    int(request.headers['Content-Length']) > 3145728:
+                return exc.HTTPRequestEntityTooLarge()
+
+            elif 'Content-Length' not in request.headers:
+                return exc.HTTPLengthRequired()
 
         if not request.path_info in _SERVICES_PATHS:
             return exc.HTTPNotFound()
