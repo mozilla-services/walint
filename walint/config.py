@@ -118,6 +118,8 @@ class Service(SetupTearDownMixin):
                  options=None, *args, **kwargs):
         self.name = name
         self.path = path
+        if '*' in methods:
+            methods = METHS
         self.methods = methods
         self.params = params or []
         self.options = options or {}

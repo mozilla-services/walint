@@ -70,8 +70,11 @@ class App(object):
         if not request.path_info in _SERVICES_PATHS:
             return exc.HTTPNotFound()
 
-        func = _ROUTES.get((request.path_info, request.method), ok)
-        return func(request)
+        func = _ROUTES.get((request.path_info, request.method))
+        if func is not None:
+            return func(request)
+        else:
+            return exc.HTTPMethodNotAllowed()
 
 
 application = App()

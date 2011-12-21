@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from webtest import TestApp
 
-from walint import controllers
+from walint import controllers, singles
 from walint.tests.testapp import application
 from walint.util import CatchErrors
 from walint.config import Service
@@ -46,3 +46,13 @@ class TestController(TestCase):
         self.assertTrue(controllers.check_414("get",
                 Service("bar", "/bar", ["GET", ]),
                 app, app.get, {}))
+
+
+class TestSingles(TestCase):
+
+    def test_404(self):
+        self.assertTrue(singles.check_404(app, {}, {}))
+
+    def test_405(self):
+        services = {'bar': Service("bar", "/bar", ["GET", "POST", "PUT"])}
+        self.assertTrue(singles.check_405(app, {}, services))
