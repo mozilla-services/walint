@@ -4,6 +4,7 @@ from webtest import TestApp
 
 from walint.util import resolve_name, CatchErrors, default_stream
 from walint.config import WalintParser, Controller
+from walint.wizard import main as wizard
 
 
 def run(app, tests, controllers, services, singles, config,
@@ -107,13 +108,21 @@ def main(filename):
 def run_cli():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument(dest="filename", help="configuration filename")
+    parser.add_argument('--create',
+                        default=False, dest='create',
+                        action="store_true",
+                        help="Create a configuration file.")
+    parser.add_argument(dest="filename",
+                        help="configuration filename")
 
     args = parser.parse_args()
 
-    results = main(args.filename)
-
-    sys.exit(len(results) != 0)
+    if args.create:
+        wizard(args.filename)
+        sys.exit(0)
+    else:
+        results = main(args.filename)
+        sys.exit(len(results) != 0)
 
 
 if __name__ == '__main__':

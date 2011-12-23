@@ -63,7 +63,8 @@ def main(filename):
 
     root = None
     while root is None:
-        res = ask("What's the root URL of your application ?")
+        res = ask("What's the root URL of your application "
+                  "(e.g. http://example.com) ?")
         if not res.startswith('http'):
             error("We are just compatible with http apps !"
                   " e.g. 'http://example.com'")
@@ -74,13 +75,13 @@ def main(filename):
 
     print('')
     help("Let's list your services now.")
-    help("A service is a path on your server, and HTTP methods")
+    help("A service is a path on your server, and some HTTP methods")
     print('')
 
     services = {}
 
     while True:
-        path = ask("Add a path [leave empty to stop]")
+        path = ask("Add a path (like: /users ) [leave empty to stop]")
 
 
         if path in services:
@@ -103,7 +104,8 @@ def main(filename):
         help('You can separate them by a pipe ("|").')
         print('')
 
-        qu = ('What HTTP methods do you support on "%s" ?' % path)
+        qu = ('What HTTP methods do you support on "%s" (like GET or POST) ?'\
+                % path)
 
         methods = None
 
@@ -139,4 +141,3 @@ if __name__ == '__main__':
         sys.exit(1)
 
     main(sys.argv[1])
-
