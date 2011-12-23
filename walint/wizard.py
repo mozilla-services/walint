@@ -21,7 +21,12 @@ def error(msg):
 
 
 def ask(msg):
-    return raw_input(msg + ' ')
+    try:
+        return raw_input(msg + ' ')
+    except KeyboardInterrupt:
+        print('')
+        error('kthxbye.. :o')
+        sys.exit(1)
 
 
 def ask_yn(msg):
