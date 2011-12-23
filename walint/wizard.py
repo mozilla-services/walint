@@ -47,6 +47,29 @@ def generate_config(path, root, services):
     cfg.add_section('walint')
     cfg.set('walint', 'root', root)
 
+    # adding the services
+    fservices = []
+    for index, (service, options) in enumerate(services.items()):
+        name = service.strip('/')
+        if name == '':
+            name = 'root'
+        section = 'service:%s' % name
+        cfg.add_section(section)
+        cfg.set(section, 'path', service)
+        methods = '|'.join(options[0])
+        cfg.set(section, 'methods', methods)
+        if index > 0:
+            space = '    '
+        else:
+            space = ''
+        fservices.append('%s%s %s' % (space, name, methods))
+
+    # adding the main test section
+    cfg.add_section('test:all')
+    cfg.set('test:all', 'singles', 'walint.singles.check_404')
+    cfg.set('test:all', 'controllers', 'walint.singles.json_breaker')
+    cfg.set('test:all', 'services', '\n'.join(fservices))
+
     with open(path, 'w') as f:
         cfg.write(f)
 
@@ -123,9 +146,16 @@ def main(filename):
             else:
                 methods = meths
 
+        if 'POST' in methods or 'PUT' in methods:
+            qu = 'Oh, I see you have a PUT or POST there, do you expect json ?'
+            if ask_yn(qu):
+                help("Walint will do a few extra json tests ;)")
+                json = True
+            else:
+                json = False
 
         help('Ok. %s %s was added.' % (path, '|'.join(methods)))
-        services[path] = (methods,)
+        services[path] = (methods, json)
         print('')
 
     generate_config(filename, root, services)
