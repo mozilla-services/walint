@@ -23,8 +23,9 @@ And get a result like this::
 
 .. toctree::
    :maxdepth: 2
-   getting-started
-   bundled_controllers
+
+   configuration
+   default_controllers
    writing_controllers
 
 Indices and tables
