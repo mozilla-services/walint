@@ -8,17 +8,18 @@ an example configuration file::
 
     [walint]
     root = walint.tests.testapp.application
+    setup = walint.tests.test_script.walint_setup
+    teardown = walint.tests.test_script.walint_teardown
 
-    ; you can define controllers with an alias so they are easy to use multiple
-    ; times
     [controller:auth-basic]
     location = walint.controllers.auth_basic
     params = foo bar
 
-    ; services defines paths and methods.
     [service:bar]
     path = /bar
     methods = GET|PUT|POST
+    params = yeah heh
+    accept = application/json
 
     [service:baz]
     path = /baz
@@ -31,10 +32,20 @@ an example configuration file::
         baz PUT|POST
 
     controllers = auth-basic
+                  walint.controllers.auth_breaker
 
+    [test:all]
     ; singles are run only once (they get all the defined services
-    ; as an argument and the configuration)
+    ; as an argument and a default contact
     singles = walint.singles.check_404
+              walint.singles.check_405
+
+    controllers = walint.controllers.json_breaker
+                  walint.controllers.check_406
+                  walint.controllers.check_411
+                  walint.controllers.check_413 16
+
+    services = bar POST|PUT
 
 Here, the `/bar` and `/baz` services will be tested against basic
 authentication, only for the specified methods.
@@ -129,4 +140,3 @@ So you can define something like this::
 
 And all the controllers **defined in the configuration file** would match, except
 this partitular one.
-
