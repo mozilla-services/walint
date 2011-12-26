@@ -1,6 +1,7 @@
 import sys
 
 from webtest import TestApp
+from wsgiproxy.app import WSGIProxyApp
 
 from walint.util import resolve_name, CatchErrors, default_stream
 from walint.config import WalintParser, Controller
@@ -81,10 +82,13 @@ def run(app, tests, controllers, services, singles, config,
     return results
 
 
-def build_app(app):
-    if app.startswith('http'):
-        raise NotImplementedError()
-    return TestApp(CatchErrors(resolve_name(app)))
+def build_app(root):
+    if root.startswith('http'):
+        app = WSGIProxyApp(root)
+    else:
+        app = CatchErrors(resolve_name(root))
+
+    return TestApp(app)
 
 
 def main(filename):

@@ -10,7 +10,7 @@ with open(os.path.join(here, 'CHANGES.rst')) as f:
     CHANGES = f.read()
 
 
-requires = ['webtest', 'webob', 'paste']
+requires = ['webtest', 'webob', 'paste', 'wsgiproxy']
 
 
 setup(name='walint',
