@@ -75,6 +75,8 @@ def run(app, tests, controllers, services, singles, config,
                         results.append(
                                 _call_controller(controller, params, method,
                                                  service))
+            except:
+                results.append(False)
             finally:
                 if service.teardown is not None:
                     service.teardown()
@@ -84,11 +86,11 @@ def run(app, tests, controllers, services, singles, config,
 
 def build_app(root):
     if root.startswith('http'):
-        app = WSGIProxyApp(root)
+        app = TestApp(WSGIProxyApp(root),
+                      extra_environ={"REMOTE_ADDR": root})
     else:
-        app = CatchErrors(resolve_name(root))
-
-    return TestApp(app)
+        app = TestApp(CatchErrors(resolve_name(root)))
+    return app
 
 
 def main(filename):

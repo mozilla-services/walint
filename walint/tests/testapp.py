@@ -1,4 +1,5 @@
 import json
+from wsgiref.simple_server import make_server
 
 from webob.dec import wsgify
 from webob import exc
@@ -78,3 +79,8 @@ class App(object):
 
 
 application = App()
+
+if __name__ == '__main__':
+    httpd = make_server('', 8000, application)
+    print "Serving HTTP on port 8000..."
+    httpd.serve_forever()
