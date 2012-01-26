@@ -8,13 +8,14 @@ from walint.util import accept, _err
 
 @accept(["POST", "PUT"])
 def json_breaker(method, service, app, caller, config):
-    """Sending a broken JSON object returns a 400/200"""
+    """Sending a broken JSON object returns a 400"""
 
     bomb = {}
     for param in service.params:
         bomb[param] = "{test:json]"  # aouch!
 
-    return _err(caller, service.path, params=bomb, status=[200, 400])
+    expected_status = 400 if bomb else 200
+    return _err(caller, service.path, params=bomb, status=expected_status)
 
 
 def auth_basic(method, service, app, caller, config, credentials=None):
@@ -22,7 +23,7 @@ def auth_basic(method, service, app, caller, config, credentials=None):
     if credentials is not None and len(credentials) == 2:
         username, password = credentials
     elif 'username' in config and 'password' in config:
-        username = config['usernam']
+        username = config['username']
         password = config['password']
     else:
         raise Exception("You must specify some authentication in the "
@@ -45,7 +46,7 @@ def auth_basic(method, service, app, caller, config, credentials=None):
 
 
 def auth_breaker(method, service, app, caller, config):
-    """Broken authorization headers returns a 401"""
+    """Broken authorization headers returns a 400"""
     return _err(caller, service.path, headers={"Authorization": "yeah!"},
                 status=400)
 
